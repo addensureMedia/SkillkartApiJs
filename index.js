@@ -1,0 +1,89 @@
+const path = require("path");
+const express = require("express");
+const app = express();
+const server = require("http").Server(app);
+const { v4: uuidV4 } = require("uuid");
+const fileUpload = require("express-fileupload");
+const cors = require("cors");
+const dotenv = require("dotenv");
+const { room } = require("./Router/ViewRoute/Viewroute");
+const viewrouter = require("./Router/ViewRoute/Viewroute");
+const pathrouter = require("./Router/Routes/Router");
+const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
+const cookieParser = require("cookie-parser");
+const methodOverride = require("method-override");
+// const GridFsStorage = require("multer-gridfs-storage");
+// const Grid = require("gridfs-stream");
+
+dotenv.config({ path: "./config.env" });
+
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
+app.use(express.static(path.join(__dirname, "public")));
+app.use("/resume", express.static(path.join("resume")));
+app.use("/profilepic", express.static(path.join("profilepic")));
+
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "OPTIONS"],
+  })
+);
+app.options("*", cors());
+
+app.use(express.json({ limit: "3gb" }));
+app.use(express.urlencoded({ extended: false }));
+// app.use(
+//   fileUpload({
+//     limits: { fileSize: 50 * 1024 * 1024 },
+//   })
+// );
+app.use(cookieParser());
+app.use(methodOverride("_method"));
+app.use(bodyParser.json());
+
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString();
+  // console.log(req.cookies.jwt);
+  next();
+});
+
+let gfs;
+
+app.use("/", viewrouter);
+app.use("/api/v1", pathrouter);
+
+mongoose
+  .connect(process.env.uri, {
+    useNewUrlParser: true,
+  })
+  .then((con) => {
+    console.log("db connected");
+  })
+  .catch((error) => {
+    console.log(error, "its a error");
+  });
+
+
+
+// app.get("/api/v1/:filename", (req, res) => {
+//   gfs.files.find().toArray((err, file) => {
+//     // console.log(file , err)
+//     if (!file || file.length === 0) {
+//       return res.status(404).json({
+//         err: "No files exist",
+//       });
+//     }
+
+//     // Files exist
+//     return res.json(file);
+//   });
+// });
+// app.all('*', (req, res, next) => {
+//   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
+// });
+const port = process.env.PORT;
+server.listen(port, () => {
+  console.log(port);
+});
