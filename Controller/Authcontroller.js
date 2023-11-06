@@ -162,12 +162,15 @@ const handleOnboardingMentor = async (mentor, step, req, res) => {
       mentor.AOE = req.body.areaOfExpertise;
       mentor.Experience = req.body.info;
       mentor.step = 2;
+      console.log(1);
+      break; // Add a break statement to exit the switch case
 
     case 2:
       mentor.mentortype = req.body.mentortype;
       mentor.Rsparetime = req.body.haveSpareTime;
       mentor.NERE = req.body.recuiteStudent;
-      mentor.compeleted = req.body.completed;
+      mentor.compeleted = true;
+      break; // Add a break statement to exit the switch case
 
     default:
       mentor.Education = req.body.info;
@@ -177,13 +180,14 @@ const handleOnboardingMentor = async (mentor, step, req, res) => {
   }
 
   await mentor.save();
-
+  console.log("done");
   return res.status(201).json({
     status: "success",
     data: {
       user: mentor,
     },
   });
+
 };
 
 exports.onBoarding = async (req, res) => {
@@ -195,7 +199,7 @@ exports.onBoarding = async (req, res) => {
         status: "Failed",
         message: "User is Logged out.",
       });
-    }
+    }else{
 
     const decoded = jwt.verify(token, process.env.JWT_SECRETE);
     const [hasUserAccount, hasMentorAccount] = await Promise.all([
@@ -234,6 +238,7 @@ exports.onBoarding = async (req, res) => {
         );
       }
     }
+    }
   } catch (err) {
     console.log(err);
     return res.status(401).json({
@@ -262,6 +267,7 @@ exports.OnboardingTokenVerification = async (req, res) => {
       await User.findById(decoded.data),
       await Recuirtment.findById(decoded.data),
     ]);
+
     if (user) {
       if (user.completed) {
         res.status(401).json({
@@ -496,10 +502,26 @@ exports.loggedin = async (req, res, next) => {
         message: "User not Found",
       });
     }
+    const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+    const ActivePack = await Transcation.find({
+        user: user._id,
+        status: "success",
+        createdAt: { $gte: sixtyDaysAgo },
+      });
 
     // Find user session data
-    const userSession = await RoomModel.find({ user: decoded.data });
+    const allTranscations= await Transcation.find()
+    const userSession = await RoomModel.find();
     const feedback = await Feedback.find({ userid: decoded.data });
+
+    let hasActivePack
+    if(ActivePack.length){
+      hasActivePack=true
+    }else{
+      hasActivePack=false
+    }
 
     // Return a 200 OK response with user data and session information
     return res.status(200).json({
@@ -507,6 +529,9 @@ exports.loggedin = async (req, res, next) => {
       data: user,
       meeting: userSession,
       feedback: feedback,
+      ActivePack:ActivePack,
+      transcation:allTranscations,
+      hasActivePack:hasActivePack
     });
   } catch (error) {
     return res.status(400).json({
@@ -1863,17 +1888,31 @@ exports.avargefeedback = async (req, res) => {
 exports.handleresume = async (req, res) => {
   const { userid, round, username, transid } = req.body;
   const DIR = "../public/resume/";
-  const mentor = await RoomModel.create({
-    user: userid,
-    compeleted: true,
-    user_name: username,
+
+  const alreadyUploaded = await RoomModel.findOne({
     round: round,
     transcationid: transid,
-    resume: `${userid}`,
-  });
-  res.status(200).json({
+    user: userid,
+  })
+  console.log(alreadyUploaded)
+  if(alreadyUploaded){
+    return  res.status(200).json({
     status: "success",
   });
+  }
+  else{
+    const mentor = await RoomModel.create({
+      user: userid,
+      compeleted: true,
+      user_name: username,
+      round: round,
+      transcationid: transid,
+      resume: `${userid}`,
+    });
+    res.status(200).json({
+      status: "success",
+    });
+  }
 };
 
 exports.getresume = async (req, res) => {

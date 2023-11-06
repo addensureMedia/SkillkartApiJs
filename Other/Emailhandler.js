@@ -54,28 +54,8 @@ module.exports = class Email {
 
     let detail = {
       from: "info@skillkart.app",
-      to: this.email,
+      to: "ashwani.soni05@gmail.com",
       subject: "New mentor assgin",
-      html,
-      text: htmlToText.compile(html),
-    };
-    await this.mailtransporter().sendMail(detail, (error, info) => {
-      console.log(error);
-      console.log(info);
-    });
-  }
-  async RequestFormail() {
-    const html = await ejs.renderFile(
-      `${__dirname}/../views/Popup/RequestForSlot.ejs`,
-      {
-        username: this.username,
-      }
-    );
-
-    let detail = {
-      from: "info@skillkart.app",
-      to:  this.email,
-      subject: "Request for more slots",
       html,
       text: htmlToText.compile(html),
     };

@@ -35,7 +35,7 @@ const {
 } = require("../../Controller/Jobcontroller");
 const { adminjobpanel } = require("../../Controller/admincontroller");
 const { performance } = require("../../Controller/dashboardcontroller");
-const { Tempmail, RequestForSlot } = require("../../Controller/Mailsender");
+const { Tempmail } = require("../../Controller/Mailsender");
 const { googlesignup } = require("../../Controller/Googleauth");
 const { payment, PaymentFail } = require("../../Controller/Payment");
 
@@ -61,7 +61,6 @@ router
 // session routes
 
 router.post("/isfeedbackdone", auth.isfeedback);
-router.post("/requestFormail", RequestForSlot);
 
 router.get("/getmentors", getmentors);
 
@@ -86,7 +85,7 @@ router.post("/meeting", meetingdata);
 router.post("/gettranscation", gettranscation);
 router.post("/mentorform", auth.mentorfeedback);
 router.post("/updateuserdetail", auth.updateroomdetail);
-router.post("/pendingfeedbacks", auth.pendingFeedback);
+router.post("/pendingfeedbackstts", auth.pendingFeedback);
 router.post("/handlewaitinglist", auth.waitinglist);
 router.post("/purchase", auth.purchase);
 router.post("/Mailer", roomcrt.mailer);
