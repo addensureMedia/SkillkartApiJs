@@ -9,10 +9,11 @@ const dotenv = require("dotenv");
 const { room } = require("./Router/ViewRoute/Viewroute");
 const viewrouter = require("./Router/ViewRoute/Viewroute");
 const pathrouter = require("./Router/Routes/Router");
+const Adminrouter = require("./Router/Admin/AdminRoutes");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
-const methodOverride = require("method-override");
+
 // const GridFsStorage = require("multer-gridfs-storage");
 // const Grid = require("gridfs-stream");
 
@@ -40,7 +41,7 @@ app.use(express.urlencoded({ extended: false }));
 //   })
 // );
 app.use(cookieParser());
-app.use(methodOverride("_method"));
+// app.use(methodOverride("_method"));
 app.use(bodyParser.json());
 
 app.use((req, res, next) => {
@@ -52,6 +53,7 @@ app.use((req, res, next) => {
 let gfs;
 
 app.use("/", viewrouter);
+app.use("/api/admin/v1", Adminrouter);
 app.use("/api/v1", pathrouter);
 
 mongoose
@@ -64,8 +66,6 @@ mongoose
   .catch((error) => {
     console.log(error, "its a error");
   });
-
-
 
 // app.get("/api/v1/:filename", (req, res) => {
 //   gfs.files.find().toArray((err, file) => {

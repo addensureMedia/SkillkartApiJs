@@ -26,7 +26,7 @@ const viewrouter = express.Router();
 // viewrouter.get("/login", auth.isLoggedIn, login);
 // viewrouter.get("/Signup", auth.isLoggedIn, signup);
 // viewrouter.get("/room/:room", auth.isLoggedIn, room);
-// viewrouter.get("/Email", auth.isLoggedIn, email);
+viewrouter.get("/Email", email);
 // viewrouter.get("/welcome", auth.isLoggedIn, welcomementor);
 // viewrouter.get("/dashboard", auth.isLoggedIn, userprofile);
 // viewrouter.get("/PrivacyPolicy", auth.isLoggedIn, Tou);

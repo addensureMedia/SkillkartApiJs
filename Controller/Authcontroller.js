@@ -4,6 +4,7 @@ const Feedback = require("../Model/Feedback");
 const Recuirtment = require("../Model/recuirter");
 const User = require("../Model/Usermodel");
 const Email = require("../Other/Emailhandler");
+const AccountEmail = require("../Other/AccountMails");
 
 const RoomEmail = require("../Other/roomhandler");
 const jwt = require("jsonwebtoken");
@@ -53,415 +54,553 @@ const createtoken = async (user, statuscode, res, req, redirect) => {
   });
 };
 
+exports.emailVerify = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const [hasRecruiterAccount, hasUserAccount] = await Promise.all([
+      Recuirtment.findOne({ Email: email.toLowerCase() }),
+      User.findOne({ Email: email.toLowerCase() }),
+    ]);
+
+    if (hasRecruiterAccount) {
+      res.status(401).json({ status: "Failed" });
+    } else if (hasUserAccount) {
+      res.status(401).json({ status: "Failed" });
+    } else {
+      console.log("we are here now");
+      res.status(200).json({ status: "success" });
+    }
+  } catch (error) {
+    // Handle errors if needed
+    console.error(error);
+    return res.status(500).json({ status: "Error" });
+  }
+};
+
 exports.signup = async (req, res) => {
   const { username, email, phone, password } = req.body;
 
-  const isRecuiteraccount = await Recuirtment.findOne({
-    Email: email.toLowerCase(),
-  });
-  const Googleaccount = await GoogleAuth.findOne({
-    Email: email,
-  });
-  console.log(isRecuiteraccount);
+  // Asynchronously query three different collections/models to check if a user with the provided email exists
+  const [isRecuiteraccount, Googleaccount, UserExist] = await Promise.all([
+    Recuirtment.findOne({
+      Email: email.toLowerCase(),
+    }),
+    GoogleAuth.findOne({
+      Email: email,
+    }),
+    User.findOne({
+      Email: email.toLowerCase(),
+    }),
+  ]);
+
+  // Check if a recruiter account already exists with the provided email
   if (isRecuiteraccount) {
+    // Send a 401 Unauthorized response with a message
     res.status(401).json({
       status: "Failed",
-      message: "already had an account as Recuiter.",
-    });
-  }
-  if (Googleaccount) {
-    res.status(401).json({
-      status: "Failed",
-      message: "Try to sign in with Google.",
+      message: "Already had an account as a Recuiter.",
     });
   } else {
-    const UserExist = await User.findOne({
-      Email: email.toLowerCase(),
-    });
-    if (UserExist) {
+    // Check if an account associated with Google authentication exists with the provided email
+    if (Googleaccount) {
+      // Send a 401 Unauthorized response with a message
       res.status(401).json({
         status: "Failed",
-        message: "already had an account Try to Login.",
+        message: "Try to sign in with Google.",
       });
     } else {
-      const ecrpyt = await bcrypt.hash(password, 15);
-      const newuser = await User.create({
-        Name: username,
-        Email: email,
-        password: ecrpyt,
-        phone: phone,
-        completed: false,
-      });
-      const refer = await Referal.findOne({
-        referedEmail: email,
-        used: false,
-      });
-      if (refer) {
-        refer.used = true;
-        await refer.save();
+      // Check if a regular user account with the provided email already exists
+      if (UserExist) {
+        // Send a 401 Unauthorized response with a message
+        res.status(401).json({
+          status: "Failed",
+          message: "Already had an account. Try to login.",
+        });
+      } else {
+        // Hash the provided password
+        const ecrpyt = await bcrypt.hash(password, 15);
+
+        // Create a new user record in the database
+        const newuser = await User.create({
+          Name: username,
+          Email: email,
+          password: ecrpyt,
+          phone: phone,
+          completed: false,
+        });
+        await new AccountEmail(username, email, "").WelcomeStudent();
+        // Call a function to generate a token and send the response
+        createtoken(newuser, 200, res, req, false);
       }
-      createtoken(newuser, 200, res, req, false);
     }
   }
-
-  // const {
-  //   username,
-  //   email,
-  //   phone,
-  //   password,
-  //   college,
-  //   stream,
-  //   degree,
-  //   graduateyear,
-  //   photo,
-  //   Linkedin,
-  //   step,
-  // } = req.body;
-  // const rec = await Recuirtment.findOne({
-  //   Email: email.toLowerCase(),
-  // });
-  // if (rec) {
-  //   res.status(401).json({
-  //     status: "success",
-  //     message: "already had an account as Recuiter.",
-  //   });
-  // } else {
-  //   const user = await User.findOne({
-  //     Email: email,
-  //   });
-  //   if (!user) {
-  //     const ecrpyt = await bcrypt.hash(password, 15);
-  //     const newuser = await User.create({
-  //       Name: username,
-  //       Email: email,
-  //       password: ecrpyt,
-  //       phone: phone,
-  //       step: step,
-  //     });
-  //     const refer = await Referal.findOne({
-  //       referedEmail: email,
-  //     });
-  //     await new Email("", username, email, "VerifyEmail").welcomesend();
-  //     if (refer) {
-  //       refer.used = true;
-  //       await refer.save();
-  //     }
-  //     res.status(200).json({
-  //       status: "success",
-  //       data: newuser,
-  //     });
-  //   } else {
-  //     if (user.completed) {
-  //       res.status(401).json({
-  //         status: "Fail",
-  //       });
-  //     } else {
-  //       if (stream && degree && college && graduateyear && photo) {
-  //         user.stream = stream;
-  //         user.degree = degree;
-  //         user.college = college;
-  //         user.photo = photo;
-  //         user.graduateyear = graduateyear;
-  //         user.completed = true;
-  //         user.Linkedinprofile = Linkedin;
-  //         await user.save();
-  //         createtoken(user, 201, res, req);
-  //       } else {
-  //         res.status(200).json({
-  //           status: "success",
-  //           data: user,
-  //         });
-  //       }
-  //     }
-  //   }
-  // }
 };
 
-exports.incompeleteform = async (req, res) => {
-  const { userid, college, stream, degree, graduateyear, photo, Linkedin } =
-    req.body;
+const handleOnboardingStudent = async (
+  student,
+  education,
+  photo,
+  linkedin,
+  res
+) => {
+  student.Education = education;
+  student.Linkedinprofile = linkedin;
+  student.photo = photo;
+  await student.save();
+  res.status(201).json({
+    status: "success",
+  });
+};
 
-  if (userid) {
-    const Googleuser = await Googleauth.findOne({
-      _id: userid,
-    });
-    if (Googleuser) {
-      Googleuser.stream = stream;
-      Googleuser.degree = degree;
-      Googleuser.graduateyear = graduateyear;
-      Googleuser.college = college;
-      Googleuser.step = 1;
-      Googleuser.Linkedinprofile = Linkedin;
-      await Googleuser.save();
-      res.status(201).json({
+const handleOnboardingMentor = async (mentor, step, req, res) => {
+  switch (step) {
+    case 1:
+      mentor.Linkedin = req.body.Linkedin;
+      mentor.Skills = req.body.skills;
+      mentor.specilization = req.body.specialization;
+      mentor.AOE = req.body.areaOfExpertise;
+      mentor.Experience = req.body.info;
+      mentor.step = 2;
+
+    case 2:
+      mentor.mentortype = req.body.mentortype;
+      mentor.Rsparetime = req.body.haveSpareTime;
+      mentor.NERE = req.body.recuiteStudent;
+      mentor.compeleted = req.body.completed;
+
+    default:
+      mentor.Education = req.body.info;
+      mentor.bio = req.body.bio;
+      mentor.photo = req.body.photo;
+      mentor.step = 1;
+  }
+
+  await mentor.save();
+
+  return res.status(201).json({
+    status: "success",
+    data: {
+      user: mentor,
+    },
+  });
+};
+
+exports.onBoarding = async (req, res) => {
+  const token = req.headers.authorization;
+
+  try {
+    if (!token) {
+      return res.status(400).json({
         status: "Failed",
+        message: "User is Logged out.",
       });
-    } else {
-      const user = await User.findById(userid);
-      if (user) {
-        user.stream = stream;
-        user.degree = degree;
-        user.graduateyear = graduateyear;
-        user.college = college;
-        await user.save();
-        res.status(201).json({
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRETE);
+    const [hasUserAccount, hasMentorAccount] = await Promise.all([
+      User.findById(decoded.data),
+      Recuirtment.findById(decoded.data),
+    ]);
+
+    if (hasUserAccount) {
+      if (hasUserAccount.completed) {
+        return res.status(401).json({
           status: "Failed",
         });
       } else {
-        res.status(400).json({
+        hasUserAccount.completed = true;
+        return handleOnboardingStudent(
+          hasUserAccount,
+          req.body.info,
+          req.body.photo,
+          req.body.Linkedin,
+          res
+        );
+      }
+    }
+
+    if (hasMentorAccount) {
+      if (hasMentorAccount.compeleted) {
+        return res.status(401).json({
           status: "Failed",
+        });
+      } else {
+        return handleOnboardingMentor(
+          hasMentorAccount,
+          hasMentorAccount.step,
+          req,
+          res
+        );
+      }
+    }
+  } catch (err) {
+    console.log(err);
+    return res.status(401).json({
+      status: "Failed",
+    });
+  }
+};
+
+exports.OnboardingTokenVerification = async (req, res) => {
+  const token = req.headers.authorization;
+  try {
+    // Check if a token is provided in the request body
+    if (!token) {
+      return res.status(400).json({
+        status: "Failed",
+        message: "User is Logged out.",
+      });
+    }
+
+    // Verify the JWT token with the secret code
+    const decoded = jwt.verify(token, process.env.JWT_SECRETE);
+
+    // Attempt to find the user with the decoded ID
+
+    const [user, recuirter] = await Promise.all([
+      await User.findById(decoded.data),
+      await Recuirtment.findById(decoded.data),
+    ]);
+    if (user) {
+      if (user.completed) {
+        res.status(401).json({
+          status: "failed",
+        });
+      } else {
+        return res.status(200).json({
+          status: "success",
+          data: {
+            user,
+          },
         });
       }
     }
+    if (recuirter) {
+      if (recuirter.compeleted) {
+        res.status(401).json({
+          status: "failed",
+        });
+      } else {
+        return res.status(200).json({
+          status: "success",
+          data: {
+            user: recuirter,
+          },
+        });
+      }
+    }
+  } catch (err) {
+    res.status(401).json({
+      status: "failed",
+    });
+  }
+};
+
+exports.PasswordReset = async (req, res) => {
+  const token = req.headers.authorization;
+  const { password } = req.body;
+  try {
+    if (!token) {
+      return res.status(400).json({
+        status: "Failed",
+        message: "User is logged out.",
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRETE);
+
+    const [user, recruiter] = await Promise.all([
+      User.findById(decoded.data),
+      Recuirtment.findById(decoded.data), // Corrected the model name
+    ]);
+
+    if (user) {
+      const saltRounds = 15; // You can adjust the number of salt rounds as needed for your security requirements.
+
+      const encryptedPassword = await bcrypt.hash(password, saltRounds);
+      user.password = encryptedPassword;
+      await user.save();
+    } else if (recruiter) {
+      const saltRounds = 15; // You can adjust the number of salt rounds as needed for your security requirements.
+      const encryptedPassword = await bcrypt.hash(password, saltRounds);
+      recruiter.Password = encryptedPassword;
+      await recruiter.save();
+    } else {
+      return res.status(404).json({
+        status: "Failed",
+        message: "User not found.",
+      });
+    }
+
+    res.status(200).json({
+      status: "Success",
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      status: "Failed",
+      message: "An error occurred while processing your request.",
+    });
+  }
+};
+exports.PasswordTokenVerification = async (req, res) => {
+  const token = req.headers.authorization;
+  try {
+    // Check if a token is provided in the request body
+    if (!token) {
+      return res.status(400).json({
+        status: "Failed",
+        message: "User is Logged out.",
+      });
+    }
+
+    // Verify the JWT token with the secret code
+    const decode = jwt.verify(token, process.env.JWT_SECRETE);
+    return res.status(201).json({
+      status: "success",
+    });
+  } catch (err) {
+    res.status(401).json({
+      status: "failed",
+    });
+  }
+};
+exports.userforgetpass = async (req, res) => {
+  const { email } = req.body;
+
+  const [user, Mentor] = await Promise.all([
+    User.findOne({ Email: email }),
+    Recuirtment.findOne({ Email: email }),
+  ]);
+
+  if (user) {
+    const token = jwt.sign({ data: user._id }, process.env.JWT_SECRETE, {
+      expiresIn: "10m",
+    });
+    await new Email(token, user.Name, user.Email).passwordreset();
+    return res.json({ token });
+  }
+  if (Mentor) {
+    const token = jwt.sign({ data: Mentor._id }, process.env.JWT_SECRETE, {
+      expiresIn: "10m",
+    });
+    await new Email(token, Mentor.Name, Mentor.Email).passwordreset();
+
+    return res.json({ token });
+  } else {
+    return res.status(401).json({
+      status: "Failed",
+      message: "No account associate with EmailId",
+    });
   }
 };
 
 exports.login = async (req, res, next) => {
   const { email, password, ipaddress, lastlogin } = req.body;
-  const user = await User.findOne({
-    Email: email,
-  });
-  const rec = await Recuirtment.findOne({
-    Email: email,
-  });
-  if (!user && !rec) {
-    return next(
-      new AppError("Didn't find associate with this EmailId.", 401, res)
-    );
-  }
-  if (rec) {
-    const dcrpt = await bcrypt.compare(password, rec.Password);
-    console.log(dcrpt);
-    console.log(password, rec.Password);
-    if (!dcrpt) {
-      return next(new AppError("Incorrect email or password.", 401, res));
-    } else {
-      rec.ipaddress = ipaddress;
-      rec.lastlogin = lastlogin;
-      await rec.save();
-      createtoken(rec, 201, res, req, true);
-    }
-  } else {
-    const dcrpt = await bcrypt.compare(password, user.password);
 
-    if (dcrpt) {
+  try {
+    const [rec, user] = await Promise.all([
+      Recuirtment.findOne({ Email: email }),
+      User.findOne({ Email: email }),
+    ]);
+    if (!rec && !user) {
+      return res.status(401).json({
+        status: "Failed",
+        message: "No account associated with this EmailId.",
+      });
+    }
+
+    if (user) {
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          status: "Failed",
+          message: "incorrect Email or Password",
+        });
+      }
+
       user.ipaddress = ipaddress;
       user.lastlogin = lastlogin;
-
       await user.save();
+
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
       const trans = await Transcation.find({
         user: user._id,
         status: "success",
+        createdAt: { $gte: sixtyDaysAgo },
       });
-      const transfilter = trans.filter(
-        (state) =>
-          Math.floor(
-            (new Date().getTime() - new Date(state.createdAt).getTime()) /
-              (1000 * 60 * 60 * 24)
-          ) < 60 && state.status == "success"
-      );
-      if (transfilter.length) {
-        if (!dcrpt) {
-          return next(new AppError("Incorrect email or password.", 401, res));
-        } else {
-          createtoken(user, 201, res, req, true);
-        }
-      } else {
-        createtoken(user, 201, res, req, false);
-      }
-    } else {
-      return next(new AppError("Incorrect email or password.", 401, res));
+
+      createtoken(user, 201, res, req, trans.length > 0);
     }
+    if (rec) {
+      const isPasswordValid = await bcrypt.compare(password, rec.Password);
+
+      if (!isPasswordValid) {
+        return res.status(401).json({
+          status: "Failed",
+          message: "No account associated with this EmailId.",
+        });
+      }
+
+      rec.ipaddress = ipaddress;
+      rec.lastlogin = lastlogin;
+      await rec.save();
+
+      const sixtyDaysAgo = new Date();
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+      const trans = await Transcation.find({
+        user: rec._id,
+        status: "success",
+        createdAt: { $gte: sixtyDaysAgo },
+      });
+
+      createtoken(rec, 201, res, req, trans.length > 0);
+    }
+  } catch (error) {
+    console.error("Error during login:", error);
+    return res.status(401).json({
+      status: "failed",
+    });
   }
 };
 
 exports.loggedin = async (req, res, next) => {
-  const { token } = req.body;
-  if (token) {
-    try {
-      console.log(token);
-      // verifing jwt token with secrete code
-      let decoded = await jwt.verify(token, process.env.JWT_SECRETE);
-      console.log(decoded, "jio");
+  const token = req.headers.authorization;
 
-      // finding user with id
-      const currentUser = await User.findById(decoded.data);
-      const userSession = await RoomModel.find({
-        user: decoded.data,
-      });
-      if (!currentUser) {
-        // checking if ID having recuiter account
-        const isRecuiteraccount = await Recuirtment.findById(decoded.data);
-        if (isRecuiteraccount) {
-          res.status(200).json({
-            status: "success",
-            data: isRecuiteraccount,
-            meeting: userSession,
-          });
-        } else {
-          // checking if ID having Google account
-          const Googleuser = await GoogleAuth.findById(decoded.data);
-          if (Googleuser) {
-            res.status(200).json({
-              status: "success",
-              data: Googleuser,
-              meeting: userSession,
-            });
-          } else {
-            res.status(401).json({
-              status: "Failed",
-              message: "User not Found",
-            });
-          }
-        }
-      } else {
-        res.status(200).json({
-          status: "success",
-          data: currentUser,
-          meeting: userSession,
-        });
-      }
-    } catch (error) {
-      console.log(error);
-      res.status(400).json({
+  try {
+    // Check if a token is provided in the request body
+    if (!token) {
+      return res.status(400).json({
         status: "Failed",
-        message: "User is Loggeout.",
+        message: "User is Logged out.",
       });
     }
-  } else {
-    res.status(400).json({
+
+    // Verify the JWT token with the secret code
+    const decoded = jwt.verify(token, process.env.JWT_SECRETE);
+
+    // Attempt to find the user with the decoded ID
+    let user =
+      (await User.findById(decoded.data)) ||
+      (await Recuirtment.findById(decoded.data)) ||
+      (await GoogleAuth.findById(decoded.data));
+
+    // If no user is found, return a 401 Unauthorized response
+    if (!user) {
+      return res.status(401).json({
+        status: "Failed",
+        message: "User not Found",
+      });
+    }
+
+    // Find user session data
+    const userSession = await RoomModel.find({ user: decoded.data });
+    const feedback = await Feedback.find({ userid: decoded.data });
+
+    // Return a 200 OK response with user data and session information
+    return res.status(200).json({
+      status: "success",
+      data: user,
+      meeting: userSession,
+      feedback: feedback,
+    });
+  } catch (error) {
+    return res.status(400).json({
       status: "Failed",
-      message: "User is Loggeout.",
-      // mentor: mentor,
+      message: "User is Logged out.",
     });
   }
-
-  // const currentUser = await User.findById(decoded.data);
-  // if (!currentUser) {
-  //   const ctUser = await Recuirtment.findById(decoded.data);
-  //   if (ctUser) {
-  //     const meeting = await RoomModel.find({
-  //       recuiter: ctUser._id,
-  //     });
-  //     res.status(200).json({
-  //       status: "success",
-  //       data: ctUser,
-  //       meeting: meeting,
-  //     });
-  //   } else {
-  //     res.status(400).json({
-  //       status: "Failed",
-  //       message: "Not User Found",
-  //     });
-  //   }
-  // } else {
-  //   const meeting = await RoomModel.find({
-  //     user: currentUser._id,
-  //   });
-
-  //   res.status(200).json({
-  //     status: "success",
-  //     data: currentUser,
-  //     meeting: meeting,
-  //   });
-  // }
 };
-
 exports.tknvrfy = async (req, res) => {
   const { email, tkn } = req.body;
-  const user = await User.findOne({
-    Email: email,
-  });
 
-  if (user.passwordResetToken) {
-    if (user.passwordResetToken === tkn) {
-      user.Emailverified = true;
-      await user.save();
-      res.status(201).json({
-        status: "success",
-        message: "done",
-      });
-    } else {
-      res.status(401).json({
-        status: "failed",
-        message: "Incorrect Code",
+  try {
+    // Attempt to find a user with the provided email
+    const user = await User.findOne({ Email: email });
+
+    if (!user || !user.passwordResetToken) {
+      // If the user doesn't exist or doesn't have a password reset token, return a 400 Bad Request response
+      return res.status(400).json({
+        status: "fail",
+        message: "Invalid email or verification code.",
       });
     }
-  } else {
-    res.status(400).json({
-      status: "fail",
-      message: "Verification code expire",
+
+    if (user.passwordResetToken === tkn) {
+      // If the provided token matches the user's token, mark the email as verified
+      user.Emailverified = true;
+      await user.save();
+
+      // Return a 201 Created response with a success message
+      return res.status(201).json({
+        status: "success",
+        message: "Email verification completed.",
+      });
+    }
+
+    // If the provided token is incorrect, return a 401 Unauthorized response
+    return res.status(401).json({
+      status: "failed",
+      message: "Incorrect verification code.",
+    });
+  } catch (error) {
+    console.error(error);
+
+    // Handle errors with a 500 Internal Server Error response
+    return res.status(500).json({
+      status: "error",
+      message: "An error occurred while verifying the email.",
     });
   }
 };
 
 exports.mentosignup = async (req, res) => {
-  const {
-    name,
-    email,
-    password,
-    phone,
-    qualy,
-    currentrole,
-    workat,
-    Linkendin,
-    expertise,
-    gender,
-    recuirment,
-    qualityrelookingfor,
-    sparetime,
-    experience,
-  } = req.body;
+  const { name, email, password, phone } = req.body;
 
-  const user = await User.findOne({
-    Email: email,
-  });
-  const rec = await Recuirtment.findOne({
-    Email: email,
-  });
-  if (!user && !rec) {
-    const ecrpt = await bcrypt.hash(password, 15);
+  try {
+    // Check if a user or recruiter with the provided email already exists
+    const existingUser = await User.findOne({ Email: email });
+    const existingRecruiter = await Recuirtment.findOne({ Email: email });
+
+    if (existingUser || existingRecruiter) {
+      return res.status(400).json({
+        status: "failed",
+        message: existingUser
+          ? "Already had an account as student"
+          : "Already had an account",
+      });
+    }
+
+    // Hash the provided password
+    const hashedPassword = await bcrypt.hash(password, 15);
+
+    // Generate a verification token
     const verifytoken = getRandomArbitrary(100000, 999999);
+
+    // Create a new mentor/recruiter
     const mentor = await Recuirtment.create({
       Name: name,
       Email: email,
-      Password: ecrpt,
+      Password: hashedPassword,
       phone: phone,
-      Gender: gender,
-      Experience: experience,
-      qualification: qualy,
-      workat: workat,
-      currentrole: currentrole,
-      Linkendin: Linkendin,
-      AOE: expertise,
-      NERE: recuirment,
-      qualities: qualityrelookingfor,
-      Rsparetime: sparetime,
-      passwordResetToken: verifytoken,
     });
+
+    // Create a JWT token for the mentor/recruiter
     createtoken(mentor, 201, res, req);
 
+    // Send a welcome email with the verification token
     await new Email(verifytoken, name, email).welcomementor();
 
-    setTimeout(() => {
-      mentor.passwordResetToken = "";
-      mentor.save();
-    }, 90000);
-
-    setTimeout(async () => {
-      await new Email(verifytoken, name, email).welcome();
-    }, 1000 * 15 * 60);
     return mentor;
-  }
-  if (user) {
-    res.status(400).json({
-      status: "failed",
-      message: "Already had an account as student",
-    });
-  } else {
-    res.status(400).json({
-      status: "Failed",
-      message: "Already had an account ",
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      status: "error",
+      message: "An error occurred during mentor signup.",
     });
   }
 };
@@ -474,26 +613,6 @@ exports.deleteroom = async (req, res) => {
   res.status(200).json({
     status: "success",
   });
-};
-exports.verifyroom = async (req, res) => {
-  const { room_id } = req.body;
-  if (room_id.length >= 12) {
-    const Room = await RoomModel.findById(room_id);
-
-    if (Room) {
-      res.status(200).json({
-        status: "success",
-      });
-    } else {
-      res.status(401).json({
-        status: "fail",
-      });
-    }
-  } else {
-    res.status(400).json({
-      status: "Fail",
-    });
-  }
 };
 
 exports.getfeedbackdetail = async (req, res) => {
@@ -552,14 +671,6 @@ exports.userdata = async (req, res) => {
       status: "Fail",
     });
   }
-};
-
-exports.logout = (req, res) => {
-  res.cookie("jwt", "", {
-    expires: new Date(Date.now() + 10 * 1000),
-    httpOnly: true,
-  });
-  res.status(200).json({ status: "success" });
 };
 
 exports.feedback = async (req, res) => {
@@ -640,309 +751,152 @@ exports.Editprofile = async (req, res) => {
   }
 };
 
+// exports.busydate = async (req, res) => {
+//   const { date, time, user_id, schdule, day } = req.body;
+//   const data = await Recuirtment.findById({ _id: user_id });
+
+//   const total_day_in_month = new Date(
+//     new Date().getFullYear(),
+//     parseInt(date.split(" ")[1]),
+//     0
+//   ).getDate();
+//   let current_date = parseInt(date.split(" ")[0]);
+//   let left_days = total_day_in_month - parseInt(date.split(" ")[0]);
+//   if (schdule) {
+//     if (left_days < 7) {
+//       data.busydate.push({
+//         date: `${current_date} ${date.split(" ")[1]} ${date.split(" ")[2]}`,
+//         time: [time],
+//         index: data.busydate.length,
+//       });
+//       await data.save();
+//       res.status(200).json({
+//         status: "success",
+//         data: data,
+//       });
+//     } else {
+//       let timeleft =
+//         (total_day_in_month -
+//           parseInt(current_date) -
+//           ((total_day_in_month - parseInt(current_date)) % 7)) /
+//         7;
+//       console.log((31 - 2 - ((31 - 2) % 7)) / 7);
+//       console.log(timeleft);
+//       for (let d = 0; d < timeleft + 1; d++) {
+//         const filter = data.busydate.filter(
+//           (state) =>
+//             state.date ==
+//             `${parseInt(date.split(" ")[0]) + d * 7} ${date.split(" ")[1]} ${
+//               date.split(" ")[2]
+//             }`
+//         );
+//         if (filter.length) {
+//           const clude = filter[0]?.time?.includes(time);
+//           if (!clude) {
+//             data.busydate[filter[0]?.index]?.time?.push(time);
+//             await data.save();
+//           } else {
+//             continue;
+//           }
+//         } else {
+//           data.busydate.push({
+//             date: `${parseInt(date.split(" ")[0]) + d * 7} ${
+//               date.split(" ")[1]
+//             } ${date.split(" ")[2]}`,
+//             time: [time],
+//             index: data.busydate.length,
+//           });
+//         }
+//       }
+
+//       await data.save();
+//       res.status(200).json({
+//         status: "success",
+//         data,
+//       });
+//     }
+//   } else {
+//     const filter = data.busydate.filter((state) => state.date == date);
+//     if (filter.length) {
+//       const clude = filter[0]?.time?.includes(time);
+//       if (!clude) {
+//         data.busydate[filter[0]?.index]?.time?.push(time);
+//         await data.save();
+//         res.status(200).json({
+//           status: "success",
+//           data: data,
+//         });
+//       } else {
+//         res.status(400).json({
+//           status: "FAILED",
+//           message: "Change time slot",
+//         });
+//       }
+//     } else {
+//       data.busydate.push({
+//         date: date,
+//         time: [time],
+//         index: data.busydate.length,
+//       });
+//       await data.save();
+
+//       res.status(200).json({
+//         status: "success",
+//         data: data,
+//         // updator,
+//       });
+//     }
+//   }
+// };
+
 exports.busydate = async (req, res) => {
-  const { date, time, user_id, schdule, day } = req.body;
-  const data = await Recuirtment.findById({ _id: user_id });
+  const { date, time, user_id, schdule } = req.body;
 
-  const total_day_in_month = new Date(
-    new Date().getFullYear(),
-    parseInt(date.split(" ")[1]),
-    0
-  ).getDate();
-  let current_date = parseInt(date.split(" ")[0]);
-  let left_days = total_day_in_month - parseInt(date.split(" ")[0]);
-  if (schdule) {
-    if (left_days < 7) {
-      data.busydate.push({
-        date: `${current_date} ${date.split(" ")[1]} ${date.split(" ")[2]}`,
-        time: [time],
-        index: data.busydate.length,
-      });
-      await data.save();
-      res.status(200).json({
-        status: "success",
-        data: data,
-      });
-    } else {
-      let timeleft =
-        (total_day_in_month -
-          parseInt(current_date) -
-          ((total_day_in_month - parseInt(current_date)) % 7)) /
-        7;
-      console.log((31 - 2 - ((31 - 2) % 7)) / 7);
-      console.log(timeleft);
-      for (let d = 0; d < timeleft + 1; d++) {
-        const filter = data.busydate.filter(
-          (state) =>
-            state.date ==
-            `${parseInt(date.split(" ")[0]) + d * 7} ${date.split(" ")[1]} ${
-              date.split(" ")[2]
-            }`
-        );
-        if (filter.length) {
-          const clude = filter[0]?.time?.includes(time);
-          if (!clude) {
-            data.busydate[filter[0]?.index]?.time?.push(time);
-            await data.save();
-          } else {
-            continue;
-          }
-        } else {
-          data.busydate.push({
-            date: `${parseInt(date.split(" ")[0]) + d * 7} ${
-              date.split(" ")[1]
-            } ${date.split(" ")[2]}`,
-            time: [time],
-            index: data.busydate.length,
-          });
-        }
-      }
+  try {
+    const data = await Recuirtment.findById(user_id);
 
-      await data.save();
-      res.status(200).json({
-        status: "success",
-        data,
+    if (!data) {
+      return res.status(404).json({
+        status: "failed",
+        message: "User not found",
       });
     }
-  } else {
-    const filter = data.busydate.filter((state) => state.date == date);
-    if (filter.length) {
-      const clude = filter[0]?.time?.includes(time);
-      if (!clude) {
-        data.busydate[filter[0]?.index]?.time?.push(time);
-        await data.save();
-        res.status(200).json({
-          status: "success",
-          data: data,
-        });
-      } else {
-        res.status(400).json({
-          status: "FAILED",
-          message: "Change time slot",
+
+    const existingDate = data.busydate.find(
+      (busyDate) => busyDate.date === date
+    );
+
+    if (existingDate) {
+      if (existingDate.time.includes(time)) {
+        return res.status(400).json({
+          status: "failed",
+          message: "Time slot is already marked as busy",
         });
       }
+      existingDate.time.push(time);
     } else {
       data.busydate.push({
         date: date,
         time: [time],
-        index: data.busydate.length,
-      });
-      await data.save();
-      // const updator = await Recuirtment.findByIdAndUpdate(
-      //   { _id: user_id },
-      //   {
-      //     $push: {
-      //       busydate: [
-      //         {
-      //           date: date,
-      //           time: [time],
-      //           index: data.busydate.length,
-      //         },
-      //       ],
-      //     },
-      //   }
-      // );
-      res.status(200).json({
-        status: "success",
-        data: data,
-        // updator,
       });
     }
-  }
-  // if (data.busydate.length) {
-  //   const filter = data.busydate.filter((state) => state.date == date);
-  //   if (filter.length) {
-  //     const clude = filter[0]?.time?.includes(time);
-  //     if (!clude) {
-  //       data.busydate[filter[0]?.index]?.time?.push(time);
-  //       await data.save();
-  //       res.status(200).json({
-  //         status: "success",
-  //         data: data,
-  //       });
-  //     } else {
-  //       res.status(400).json({
-  //         status: "FAILED",
-  //         message: "Change time slot",
-  //       });
-  //     }
-  //   } else {
-  //     if (schdule) {
-  //       let monthdate = new Date(
-  //         new Date().getFullYear(),
-  //         new Date().getMonth() + 1,
-  //         0
-  //       ).getDate();
-  //       let s = 0;
-  //       let ds = parseInt(date.split(" ")[0]);
-  //       for (let d = 0; d < 7 - day; d++) {
-  //         if (monthdate - ds >= 0) {
-  //           const updator = await Recuirtment.findByIdAndUpdate(
-  //             { _id: user_id },
-  //             {
-  //               $push: {
-  //                 busydate: [
-  //                   {
-  //                     date: `${parseInt(date.split(" ")[0]) + d} ${
-  //                       date.split(" ")[1]
-  //                     } ${date.split(" ")[2]}`,
-  //                     time: [time],
-  //                     index: data.busydate.length,
-  //                   },
-  //                 ],
-  //               },
-  //             }
-  //           );
-  //           await updator.save();
-  //           ds++;
-  //         } else {
-  //           break;
-  //         }
-  //       }
 
-  //       res.status(200).json({
-  //         status: "success",
-  //         data: data,
-  //       });
-  //     } else {
-  //       const updator = await Recuirtment.findByIdAndUpdate(
-  //         { _id: user_id },
-  //         {
-  //           $push: {
-  //             busydate: [
-  //               {
-  //                 date: date,
-  //                 time: [time],
-  //                 index: data.busydate.length,
-  //               },
-  //             ],
-  //           },
-  //         }
-  //       );
-  //       res.status(200).json({
-  //         status: "success",
-  //         data: updator,
-  //         f: "yeap",
-  //       });
-  //     }
-  //   }
-  // } else {
-  //   const updator = await Recuirtment.findByIdAndUpdate(
-  //     { _id: user_id },
-  //     {
-  //       $push: {
-  //         busydate: [
-  //           {
-  //             date: date,
-  //             time: [time],
-  //             index: data.busydate.length,
-  //           },
-  //         ],
-  //       },
-  //     }
-  //   );
-  //   res.status(200).json({
-  //     status: "success",
-  //     data: updator,
-  //     f: "yeap",
-  //   });
-  // }
-};
+    await data.save();
 
-exports.userforgetpass = async (req, res) => {
-  const { token, password } = req.body;
-  console.log(token, password);
-  const rec = await Recuirtment.findOne({
-    passwordResetToken: token,
-  });
-  const user = await User.findOne({
-    passwordResetToken: token,
-  });
-
-  if (user || rec) {
-    if (user) {
-      const ecrpt = await bcrypt.hash(password, 15);
-      user.password = ecrpt;
-      user.passwordResetToken = "";
-      console.log(user);
-      await user.save();
-      res.status(200).json({
-        status: "success",
-      });
-    }
-    if (rec) {
-      const ecrpt = await bcrypt.hash(password, 15);
-      rec.Password = ecrpt;
-      rec.passwordResetToken = "";
-      await rec.save();
-      res.status(200).json({
-        status: "success",
-      });
-    }
-  } else {
-    res.status(401).json({
-      status: "Fail",
-      message: "Token expired.",
+    return res.status(200).json({
+      status: "success",
+      data: data,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      status: "error",
+      message: "An error occurred while updating busy dates",
     });
   }
-  // if (role == "user") {
-  //   const user = await User.findOne({ Email: email });
-  //   const ecrpt = await bcrypt.hash(password, 10);
-  //   user.password = ecrpt;
-  //   console.log(user);
-  //   await user.save();
-  //   res.status(200).json({
-  //     status: "success",
-  //   });
-  // } else {
-  //   const user = await Recuirtment.findOne({ Email: email });
-  //   const ecrpt = await bcrypt.hash(password, 10);
-  //   user.Password = ecrpt;
-  //   await user.save();
-  //   res.status(200).json({
-  //     status: "success",
-  //   });
-  // }
 };
 
-exports.createmsg = async (req, res) => {
-  const { msg, username, roomid } = req.body;
-
-  const request = await RoomMessModel.create({
-    message: msg,
-    user_name: username,
-    roomid: roomid,
-  });
-  res.status(200).json({
-    status: "success",
-  });
-};
-
-exports.getmessage = async (req, res) => {
-  const { roomid } = req.body;
-  const message = await RoomMessModel.find({
-    roomid: roomid,
-  }).sort({ createdAt: -1 });
-  res.status(200).json({
-    data: message,
-  });
-};
-
-exports.deleteroommsg = async (req, res) => {
-  const { roomid, userid } = req.body;
-  const pendingfeedback = await Recuirtment.findById(userid);
-  pendingfeedback.pendingfeedback = true;
-  const request = await RoomMessModel.deleteMany({
-    roomid: roomid,
-  });
-
-  await pendingfeedback.save();
-  res.status(200).json({
-    status: "success",
-  });
-};
-
-exports.pfee = async (req, res) => {
+exports.pendingFeedback = async (req, res) => {
   const { roomid, userid, time, date } = req.body;
   const re = await RoomModel.findOne({
     roomid: roomid,
@@ -1067,7 +1021,6 @@ exports.updateroomdetail = async (req, res) => {
 
 exports.payment = async (req, res) => {
   const { amount, email } = req.body;
-  console.log(amount, email);
 
   const instance = new Razorpay({
     key_id: process.env.live_r_key_id,
@@ -1116,20 +1069,6 @@ exports.payment = async (req, res) => {
     };
   }
 
-  // if (transcation.length < 26) {
-  //   options = {
-  //     amount: 4999 * 100, // amount in the smallest currency unit
-  //     currency: "INR",
-  //     receipt: "order_rcptid_11",
-  //   };
-  // } else {
-  //   options = {
-  //     amount: amount * 100, // amount in the smallest currency unit
-  //     currency: "INR",
-  //     receipt: "order_rcptid_11",
-  //   };
-  // }
-
   instance.orders.create(options, function (err, order) {
     if (order) {
       res.status(200).json({
@@ -1165,60 +1104,6 @@ const dispatchdates = (f, array) => {
     }
   }
   return array;
-};
-exports.getmentors = async (req, res) => {
-  const { user_id } = req.body;
-
-  const get = await RoomModel.findOne({
-    user: user_id,
-    status: "success",
-  });
-
-  if (get) {
-    if (get.course_index > 1) {
-      const request = await Recuirtment.findOne({
-        _id: get.recuiter,
-      });
-      let d = new Date();
-      let m = d.getMonth();
-      let date = d.getDate();
-      let array = [];
-
-      let f = request.busydate.filter(
-        (state) =>
-          state.date.split(" ")[1] >= m + 1 && state.date.split(" ")[0] >= date
-      );
-      dispatchdates(f, array);
-
-      res.status(200).json({
-        status: "success",
-        meeting: array,
-      });
-    } else {
-      const request = await Recuirtment.find();
-      let d = new Date();
-      let m = d.getMonth();
-      let date = d.getDate();
-      let array = [];
-      for (let i = 0; i < request.length; i++) {
-        let f = request[i].busydate.filter(
-          (state) =>
-            state.date.split(" ")[1] >= m + 1 &&
-            state.date.split(" ")[0] >= date
-        );
-
-        dispatchdates(f, array);
-      }
-      res.status(200).json({
-        status: "success",
-        meeting: array,
-      });
-    }
-  } else {
-    res.status(400).json({
-      status: "failed",
-    });
-  }
 };
 
 const gtime = (item) => {
@@ -1400,91 +1285,6 @@ const rstringe = async () => {
   }
 };
 
-const Creatingroom = async (
-  slot,
-  user_id,
-  username,
-  email,
-  course,
-  price,
-  status,
-  res
-) => {
-  let cat = ["Technical", "Technical", "Technical", "HR", "HR"];
-  const string = await rstringe();
-  const requesteddata = await RoomModel.create({
-    user: user_id,
-    recuiter: slot.recuiter._id,
-    recuiter_name: slot.recuiter.Name,
-    user_name: username,
-    recuiter_photo: slot.recuiter.photo,
-    roomid: string,
-    course_index: 0,
-    Course_cat: cat[0],
-    time: slot.time,
-    date: slot.date,
-    course: course,
-    price: price,
-    status: status,
-  });
-  const url = `https://skillkart.app/room/${requesteddata.roomid}`;
-  // await new RoomEmail(username, email, slot.time, slot.date, url).send();
-  // await new RoomEmail(
-  //   slot.recuiter.Name,
-  //   slot.recuiter.Email,
-  //   slot.time,
-  //   slot.date,
-  //   url
-  // ).send();
-  res.status(200).json({
-    status: "success",
-    data: requesteddata,
-  });
-};
-
-// exports.bookaslot = async (req, res) => {
-//   let index = 0;
-//   const recuiter = await Recuirtment.find();
-//   const { user_id, course, price, username, email, date, status } = req.body;
-
-//   const d = new Date();
-//   let dnow = d.getDate();
-//   let mnow = d.getMonth();
-//   let ynow = d.getFullYear();
-
-//   const slot = await searching(
-//     d,
-//     dnow,
-//     mnow,
-//     ynow,
-//     recuiter,
-//     user_id,
-//     course,
-//     price,
-//     username,
-//     email,
-//     date,
-//     index
-//   );
-//   if (slot) {
-//     await Creatingroom(
-//       slot,
-//       user_id,
-//       username,
-//       email,
-//       course,
-//       price,
-//       status,
-//       res
-//     );
-//   } else {
-//     res.status(400).json({
-//       status: "Failed",
-//       message: "No slot available",
-//     });
-//   }
-// };
-
 exports.demo = async (req, res) => {
   const cr = await bcrypt.hash("itsadminnotuser", 10);
 };
@@ -1509,24 +1309,6 @@ exports.subscribe = async (req, res) => {
       message: "Thank for your subscription",
     });
   }
-};
-
-exports.transfail = async (req, res) => {
-  const { user_id, course, price, username, r_id, email, date, status } =
-    req.body;
-
-  const requesteddata = await Transcation.create({
-    user: user_id,
-    user_name: username,
-    course: course,
-    price: price,
-    status: status,
-    razarpay_order_id: r_id,
-  });
-  res.status(400).json({
-    status: "failed",
-    message: "Transcation failed",
-  });
 };
 
 exports.purchase = async (req, res) => {
@@ -1562,7 +1344,6 @@ exports.purchase = async (req, res) => {
       time: "",
       date: "",
     });
-    // console.log(refer);
     if (refer) {
       refer.used = true;
     } else {
@@ -1578,7 +1359,7 @@ exports.purchase = async (req, res) => {
 
 const getindex = (t, time) => {
   const i = t.indexOf(time);
-  t.splice(i, 1);
+  t.slice(i, 1);
   return true;
 };
 
@@ -1710,7 +1491,6 @@ exports.referals = async (req, res) => {
   const request = await Referal.find({
     referedbyEmail: email,
   });
-  // console.log(email);
   res.status(200).json({
     status: "success",
     data: request,
@@ -1739,7 +1519,6 @@ exports.mentor = async (req, res) => {
       continue;
     }
   }
-  // console.log(array);
   res.status(200).json({
     status: "success",
     data: array,
@@ -1759,7 +1538,8 @@ exports.submitdate = async (req, res) => {
     recuiter_email,
     transid,
   } = req.body;
-  let months = [
+
+  const months = [
     "January",
     "February",
     "March",
@@ -1773,32 +1553,151 @@ exports.submitdate = async (req, res) => {
     "November",
     "December",
   ];
-  let tago = 1832454;
-  // console.log(recuiterid, userid, username, date, time, recuiter_name, round);
-  const re = await Recuirtment.findOne({
-    _id: recuiterid,
-  });
-  if (re) {
-    const filter = re.busydate.filter((state) => state.date == date);
-    if (filter.length) {
-      const i = filter[0].time.includes(time);
-      if (i) {
-        const timef = getindex(re.busydate[filter[0].index].time, time);
-        await re.save();
-        const string = await rstringe();
-        const roomcreation = await RoomModel.create({
-          user: userid,
-          recuiter: recuiterid,
-          user_name: username,
-          recuiter_name: recuiter_name,
-          round: round,
-          transcationid: transid,
-          time: time,
-          date: date,
-          roomid: string,
-        });
-        const url = `https://skillkart.app/room/${string}`;
 
+  const tago = 1832454;
+  const alreadyHasBooking = await RoomModel.findOne({
+    round: round,
+    transcationid: transid,
+  });
+  if (alreadyHasBooking) {
+    if (alreadyHasBooking.reschedule <= 2) {
+      const re = await Recuirtment.findOne({ _id: recuiterid });
+
+      if (!re) {
+        return res
+          .status(400)
+          .json({ status: "error", message: "Recruiter not found" });
+      }
+
+      const filter = re.busydate.find((state) => state.date === date);
+
+      if (!filter) {
+        return res.status(400).json({
+          status: "error",
+          message: "Date not found in recruiter's schedule",
+        });
+      }
+
+      const indexOfDate = re.busydate.findIndex((state) => state.date == date);
+      const isTimeTaken = filter.time.includes(time);
+      getindex(re.busydate[indexOfDate].time, time);
+
+      await re.save();
+      if (!isTimeTaken) {
+        return res
+          .status(400)
+          .json({ status: "error", message: "Time slot is already taken" });
+      }
+
+      const convertTo24Hour = (time) => {
+        const [hour, minute] = time.split(" ")[0].split(":");
+        if (time.includes("PM") && hour !== "12") {
+          return `${parseInt(hour) + 12}:${minute}`;
+        } else if (time.includes("AM") && hour === "12") {
+          return `00:${minute}`;
+        } else {
+          return time.split(" ")[0];
+        }
+      };
+
+      const time24Hour = convertTo24Hour(time);
+
+      const dateStr = `${months[parseInt(date.split(" ")[1]) - 1]} ${
+        date.split(" ")[0]
+      }, ${date.split(" ")[2]} ${time24Hour}:00`;
+      const scheduledTime = new Date(dateStr).getTime();
+      const currentTime = new Date().getTime();
+
+      if (scheduledTime - currentTime > tago) {
+        setTimeout(async () => {
+          await new RoomEmail(url, username, user_email, time, date).send();
+          await new RoomEmail(
+            url,
+            recuiter_name,
+            recuiter_email,
+            time,
+            date
+          ).send();
+        }, scheduledTime - currentTime);
+      }
+
+      const string = await rstringe();
+
+      alreadyHasBooking.time = time;
+      alreadyHasBooking.date = date;
+      alreadyHasBooking.reschedule = alreadyHasBooking.reschedule + 1;
+      await alreadyHasBooking.save();
+      const url = `https://skillkart.app/room/${alreadyHasBooking.roomid}`;
+
+      await new RoomEmail(url, username, user_email, time, date).send();
+      await new RoomEmail(
+        url,
+        recuiter_name,
+        recuiter_email,
+        time,
+        date
+      ).send();
+
+      res.status(200).json({
+        status: "success",
+        data: alreadyHasBooking,
+      });
+    } else {
+      return res.status(401).json({
+        status: "success",
+        message: "extend all the limits",
+      });
+    }
+  } else {
+    const re = await Recuirtment.findOne({ _id: recuiterid });
+
+    if (!re) {
+      return res
+        .status(400)
+        .json({ status: "error", message: "Recruiter not found" });
+    }
+
+    const filter = re.busydate.find((state) => state.date === date);
+
+    if (!filter) {
+      return res.status(400).json({
+        status: "error",
+        message: "Date not found in recruiter's schedule",
+      });
+    }
+
+    const indexOfDate = re.busydate.findIndex((state) => state.date == date);
+    const isTimeTaken = filter.time.includes(time);
+    getindex(re.busydate[indexOfDate].time, time);
+
+    await re.save();
+    if (!isTimeTaken) {
+      return res
+        .status(400)
+        .json({ status: "error", message: "Time slot is already taken" });
+    }
+
+    const convertTo24Hour = (time) => {
+      const [hour, minute] = time.split(" ")[0].split(":");
+      if (time.includes("PM") && hour !== "12") {
+        return `${parseInt(hour) + 12}:${minute}`;
+      } else if (time.includes("AM") && hour === "12") {
+        return `00:${minute}`;
+      } else {
+        return time.split(" ")[0];
+      }
+    };
+
+    const time24Hour = convertTo24Hour(time);
+
+    const dateStr = `${months[parseInt(date.split(" ")[1]) - 1]} ${
+      date.split(" ")[0]
+    }, ${date.split(" ")[2]} ${time24Hour}:00`;
+    const scheduledTime = new Date(dateStr).getTime();
+    const currentTime = new Date().getTime();
+
+    if (scheduledTime - currentTime > tago) {
+      setTimeout(async () => {
         await new RoomEmail(url, username, user_email, time, date).send();
         await new RoomEmail(
           url,
@@ -1807,62 +1706,31 @@ exports.submitdate = async (req, res) => {
           time,
           date
         ).send();
-
-        if (time.split(" ")[1] == "AM") {
-          let dates = `${months[parseInt(date.split(" ")[1]) - 1]} ${
-            date.split(" ")[0]
-          } , ${date.split(" ")[2]} ${time.split(" ")[0].split(":")[0]}:${
-            time.split(" ")[0].split(":")[1]
-          }:00`;
-          const a = new Date().getTime();
-          const d = new Date(dates);
-          let ans = d - a;
-
-          if (ans - tago > 0) {
-            setTimeout(async () => {
-              await new RoomEmail(url, username, user_email, time, date).send();
-              await new RoomEmail(
-                url,
-                recuiter_name,
-                recuiter_email,
-                time,
-                date
-              ).send();
-            }, ans - tago);
-          }
-        }
-        if (time.split(" ")[1] == "PM") {
-          let dates = `${months[parseInt(date.split(" ")[1]) - 1]} ${
-            date.split(" ")[0]
-          } , ${date.split(" ")[2]} ${
-            parseInt(time.split(" ")[0].split(":")[0]) + 12
-          }:${time.split(" ")[0].split(":")[1]}:00`;
-          const d = new Date(dates);
-          const a = new Date().getTime();
-          let ans = d - a;
-          if (ans - tago > 0) {
-            setTimeout(async () => {
-              await new RoomEmail(url, username, user_email, time, date).send();
-              await new RoomEmail(
-                url,
-                recuiter_name,
-                recuiter_email,
-                time,
-                date
-              ).send();
-            }, ans - tago);
-          }
-          // console.log(new Date().getTime() - tago);
-        }
-
-        res.status(200).json({
-          status: "success",
-          data: roomcreation,
-        });
-      } else {
-        console.log("time already taken");
-      }
+      }, scheduledTime - currentTime);
     }
+
+    const string = await rstringe();
+    const roomcreation = await RoomModel.create({
+      user: userid,
+      recuiter: recuiterid,
+      user_name: username,
+      recuiter_name: recuiter_name,
+      round: round,
+      transcationid: transid,
+      time: time,
+      date: date,
+      roomid: string,
+    });
+
+    const url = `https://skillkart.app/room/${string}`;
+
+    await new RoomEmail(url, username, user_email, time, date).send();
+    await new RoomEmail(url, recuiter_name, recuiter_email, time, date).send();
+
+    res.status(200).json({
+      status: "success",
+      data: roomcreation,
+    });
   }
 };
 
@@ -1930,7 +1798,6 @@ exports.selectmentor = async (req, res) => {
   let month = date.getMonth();
   let day = date.getDate();
   const { recuit } = req.body;
-  console.log(recuit);
   const f = await Recuirtment.findOne({
     _id: recuit,
   });
@@ -1977,11 +1844,9 @@ exports.handlefeedback = async (req, res) => {
 
 exports.avargefeedback = async (req, res) => {
   const { userid } = req.body;
-  // console.log(userid);
   const request = await Feedback.find({
     userid,
   });
-  // console.log(request);
   if (request.length) {
     sum = 0;
     for (let c of request) {
@@ -1998,7 +1863,7 @@ exports.avargefeedback = async (req, res) => {
 exports.handleresume = async (req, res) => {
   const { userid, round, username, transid } = req.body;
   const DIR = "../public/resume/";
-  const r = await RoomModel.create({
+  const mentor = await RoomModel.create({
     user: userid,
     compeleted: true,
     user_name: username,
@@ -2013,7 +1878,6 @@ exports.handleresume = async (req, res) => {
 
 exports.getresume = async (req, res) => {
   const { userid, transid } = req.body;
-  console.log(userid, transid);
   const r = await RoomModel.findOne({
     user: userid,
     transcationid: transid,
@@ -2053,8 +1917,7 @@ const passwordresettoken = async () => {
   let recsearch = await Recuirtment.find({
     passwordResetToken: string,
   });
-  console.log(string);
-  console.log(usersearch, recsearch);
+
   if (!usersearch.length && !recsearch.length) {
     return string;
   } else {
@@ -2070,7 +1933,7 @@ exports.emailverification = async (req, res) => {
 
   if (rec) {
     const verifytoken = await passwordresettoken();
-    console.log(verifytoken);
+
     rec.passwordResetToken = verifytoken;
     await new Email(verifytoken, rec.Name, email).send();
     await rec.save();
@@ -2091,7 +1954,7 @@ exports.emailverification = async (req, res) => {
 
 exports.emailverified = async (req, res) => {
   const { id } = req.query;
-  console.log(id);
+
   const user = await User.findOne({
     passwordResetToken: id,
   });
@@ -2130,7 +1993,6 @@ exports.uemail = async (req, res) => {
 
   if (user) {
     const verifytoken = await passwordresettoken();
-    console.log(verifytoken);
     user.passwordResetToken = verifytoken;
     await new Email(verifytoken, user.Name, email).passwordreset();
     await user.save();
@@ -2148,7 +2010,6 @@ exports.uemail = async (req, res) => {
 
     if (rec) {
       const verifytoken = await passwordresettoken();
-      console.log(verifytoken);
       rec.passwordResetToken = verifytoken;
       await new Email(verifytoken, rec.Name, email).passwordreset();
       await rec.save();
@@ -2252,7 +2113,6 @@ exports.getrevenue = async (req, res) => {
 
 exports.isfeedback = async (req, res) => {
   const { roomid } = req.body;
-
   const request = await Feedback.findOne({
     roomid,
   });
@@ -2291,7 +2151,6 @@ exports.isuserhasresume = async (req, res) => {
 
 exports.changeprofilepic = async (req, res) => {
   const { userid, image } = req.body;
-  console.log(userid, image);
   const urequest = await User.findOne({
     _id: userid,
   });
@@ -2360,7 +2219,6 @@ exports.deactive = async (req, res) => {
 exports.change = async (req, res) => {
   const { changeable, content, userid } = req.body;
 
-  console.log(changeable);
   const user = await User.findOne({
     _id: userid,
   });
@@ -2434,7 +2292,6 @@ exports.change = async (req, res) => {
 
 exports.getreferer = async (req, res) => {
   const { id } = req.query;
-  // console.log(id);
   const user = await Referal.findOne({
     refercode: id,
   });
@@ -2625,7 +2482,6 @@ exports.emailtest = async (req, res) => {
 
     if (ans - tago > 0) {
       setTimeout(async () => {
-        console.log("yeah");
         await new Email(
           "",
           "jagdeep",
@@ -2657,8 +2513,6 @@ exports.emailtest = async (req, res) => {
     const d = new Date(dates);
     const a = new Date().getTime();
     let ans = d - a;
-    console.log(ans - tago, tago, ans);
-    console.log(d);
     if (ans - tago > 0) {
       setTimeout(async () => {
         console.log("yeah");

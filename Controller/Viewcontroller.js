@@ -10,7 +10,7 @@ exports.welcome = (req, res) => {
 };
 
 exports.email = (req, res) => {
-  res.render("Popup/Welcomementor");
+  res.render("Emails/WelcomeStudent");
 };
 exports.welcomementor = (req, res) => {
   res.render("Popup/Welcomementor");

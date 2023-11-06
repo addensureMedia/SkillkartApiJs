@@ -7,6 +7,10 @@ const RoomSchema = new mongoose.Schema({
   recuiter_name: String,
   recuiter_photo: String,
   roomid: String,
+  reschedule: {
+    type: Number,
+    default: 0,
+  },
   time: {
     type: String,
     default: "",
@@ -29,7 +33,9 @@ const RoomSchema = new mongoose.Schema({
   transcationid: {
     type: String,
   },
-  
+  recuiter: {
+    type: String,
+  },
   createdAt: {
     type: Date,
     default: Date.now(),

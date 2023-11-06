@@ -15,8 +15,9 @@ const {
   getblog,
   allblogs,
   product,
+  getmentors,
 } = require("../../Controller/allresponse");
-const { upload } = require("../../Other/Multer");
+
 const {
   secreatuser,
   getaccountdetail,
@@ -34,19 +35,38 @@ const {
 } = require("../../Controller/Jobcontroller");
 const { adminjobpanel } = require("../../Controller/admincontroller");
 const { performance } = require("../../Controller/dashboardcontroller");
-const { Tempmail } = require("../../Controller/Mailsender");
+const { Tempmail, RequestForSlot } = require("../../Controller/Mailsender");
 const { googlesignup } = require("../../Controller/Googleauth");
+const { payment, PaymentFail } = require("../../Controller/Payment");
 
 // Auth routes
-router.route("/isLoggedIn").post(auth.loggedin);
+
+router.route("/isLoggedIn").get(auth.loggedin);
 router.route("/signup").post(auth.signup);
+router.route("/emailverify").post(auth.emailVerify);
 router.route("/Login").post(auth.login);
 router.route("/googlelogin").post(googlesignup);
-router.route("/incompeleteformsubmission").post(auth.incompeleteform);
+router.route("/Onboarding").post(auth.onBoarding);
+router.route("/forgotPassword").post(auth.userforgetpass);
+router
+  .route("/ResetPassword")
+  .get(auth.PasswordTokenVerification)
+  .post(auth.PasswordReset);
+
+router.route("/mentorsignup").post(auth.mentosignup);
+router
+  .route("/Onboarding/tokenVerification")
+  .get(auth.OnboardingTokenVerification);
+
+// session routes
+
+router.post("/isfeedbackdone", auth.isfeedback);
+router.post("/requestFormail", RequestForSlot);
+
+router.get("/getmentors", getmentors);
 
 router.route("/roomcreation").post(roomrequest);
 
-router.route("/mentorsignup").post(auth.mentosignup);
 router
   .route("/mentoraccount")
   .post(auth.mentoraccountcr)
@@ -57,24 +77,17 @@ router.route("/mentortknvrfy").post(auth.mentortknvrfy);
 router.route("/userdata").post(userdata);
 router.route("/dateadder").post(auth.busydate);
 router.route("/deleteroom").put(auth.deleteroom);
-router.route("/roomverifiactio").post(auth.verifyroom);
-router.route("/userforgeztpassword").post(auth.userforgetpass);
+
 router.route("/feedbackdetail").post(auth.getfeedbackdetail);
 router.route("/userdetail").post(auth.userdata);
-router.get("/logout", auth.logout);
 router.post("/feedback", auth.feedback);
 router.post("/Editprofile", auth.Editprofile);
 router.post("/meeting", meetingdata);
 router.post("/gettranscation", gettranscation);
-router.post("/createmsg", auth.createmsg);
-router.post("/getmsg", auth.getmessage);
-router.post("/deletemsg", auth.deleteroommsg);
 router.post("/mentorform", auth.mentorfeedback);
 router.post("/updateuserdetail", auth.updateroomdetail);
-router.post("/pendingfeedbackstts", auth.pfee);
-router.post("/razarpay", auth.payment);
+router.post("/pendingfeedbacks", auth.pendingFeedback);
 router.post("/handlewaitinglist", auth.waitinglist);
-router.post("/getmentors", auth.getmentors);
 router.post("/purchase", auth.purchase);
 router.post("/Mailer", roomcrt.mailer);
 router.post("/subscribe", auth.subscribe);
@@ -82,7 +95,6 @@ router.post("/refer", auth.refer);
 router.route("/getblog").get(allblogs).post(getblog);
 
 router.post("/experiment", auth.demo);
-router.post("/handletranctionfail", auth.transfail);
 router.post("/bookaslot", auth.bookaslot);
 router.get("/adminmentor", mentor);
 router.post("/refer", auth.refer);
@@ -102,7 +114,7 @@ router.post("/passwordverify", auth.pverify);
 router.post("/getfeedbacks", auth.getfeedbacks);
 router.post("/getrevenue", auth.getrevenue);
 router.get("/adminuserrecuirter", roomcrt.getuandr);
-router.post("/isfeedbackdone", auth.isfeedback);
+
 router.post("/reportaproblem", roomcrt.reportproblem);
 router.post("/changeprofile", auth.changeprofilepic);
 router.post("/removeprofilepic", auth.removeprofilepic);
@@ -132,18 +144,19 @@ router.route("/adminjobpanel").get(adminjobpanel);
 router.route("/jobs").post(postjobs).get(getjobs);
 router.route("/applyjobs").post(Jobapply);
 
+// payment gateway
+
+router.post("/razarpay", payment);
+router.post("/handletranctionfail", PaymentFail);
+
+// room routes
+router.route("/roomverifiactio").post(roomcrt.verifyroom);
+router.post("/deletemsg", roomcrt.deleteroommsg);
+router.post("/createmsg", roomcrt.createmsg);
+router.post("/getmsg", getmessages);
+
 // mailurl
 
 router.route("/mail/send").post(Tempmail);
-
-////secreta links
-
-router.route("/secretacreataccount").post(secreatuser);
-router.route("/secretalogin").post(userlogin);
-router.route("/secretaphoneupdate").post(secretaphone);
-router.route("/secretagetacdetail").get(getaccountdetail);
-router.route("/sendmessages").post(getmessages).get(secretamessage);
-router.route("/seenrqt").get(seenrqt);
-router.route("/secretislogin").post(sislogin);
 
 module.exports = router;

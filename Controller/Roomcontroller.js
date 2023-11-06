@@ -11,6 +11,95 @@ exports.mailer = async (req, res) => {
   await new RoomEmail(username, email).send();
 };
 
+exports.verifyroom = async (req, res) => {
+  const { room_id } = req.body;
+  if (room_id.length >= 12) {
+    const Room = await RoomModel.findById(room_id);
+
+    if (Room) {
+      res.status(200).json({
+        status: "success",
+      });
+    } else {
+      res.status(401).json({
+        status: "fail",
+      });
+    }
+  } else {
+    res.status(400).json({
+      status: "Fail",
+    });
+  }
+};
+
+exports.createmsg = async (req, res) => {
+  const { msg, username, roomid } = req.body;
+
+  try {
+    await RoomMessModel.create({
+      message: msg,
+      user_name: username,
+      roomid: roomid,
+    });
+
+    return res.status(200).json({
+      status: "success",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      status: "error",
+      message: "An error occurred while creating the message.",
+    });
+  }
+};
+
+exports.getmessage = async (req, res) => {
+  const { roomid } = req.body;
+
+  try {
+    const messages = await RoomMessModel.find({
+      roomid: roomid,
+    }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      data: messages,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      status: "error",
+      message: "An error occurred while retrieving messages.",
+    });
+  }
+};
+
+exports.deleteroommsg = async (req, res) => {
+  const { roomid, userid } = req.body;
+
+  try {
+    const pendingfeedback = await Recuirtment.findById(userid);
+    pendingfeedback.pendingfeedback = true;
+
+    await RoomMessModel.deleteMany({
+      roomid: roomid,
+    });
+
+    await pendingfeedback.save();
+
+    return res.status(200).json({
+      status: "success",
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({
+      status: "error",
+      message: "An error occurred while deleting room messages.",
+    });
+  }
+};
+
+
 exports.getrounds = async (req, res) => {
   const { user_id, transid } = req.body;
 
@@ -48,15 +137,6 @@ exports.getuandr = async (req, res) => {
     );
   });
   console.log(recuiter.length - 5, trans.length - 5, user.length - 5);
-
-  // res.status(200).json({
-  //   status: "success",
-  //   data: {
-  //     userarray,
-  //     recuirterarray,
-  //     transarray,
-  //   },
-  // });
 };
 
 exports.reportproblem = async (req, res) => {

@@ -29,6 +29,15 @@ const UserModel = new mongoose.Schema({
   passwordResetToken: {
     type: String,
   },
+  Education: [
+    {
+      college: String,
+      degree: String,
+      stream: String,
+      startingYear: String,
+      endYear: String,
+    },
+  ],
   stream: String,
   degree: String,
   graduateyear: String,

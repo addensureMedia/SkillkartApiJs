@@ -28,9 +28,31 @@ const ReModel = new mongoose.Schema({
   photo: {
     type: String,
   },
-  Experience: {
-    type: String,
-  },
+  Education: [
+    {
+      college: String,
+      degree: String,
+      stream: String,
+      startingMonth: String,
+      endMonth: String,
+      startingYear: String,
+      endYear: String,
+    },
+    ,
+  ],
+  Experience: [
+    {
+      designation: String,
+      companyName: String,
+      startingMonth: Number,
+      endMonth: Number,
+      startingYear: Number,
+      endYear: Number,
+    },
+  ],
+  Skills: [String],
+  AOE: [String],
+  specilization: [String],
   bio: {
     type: String,
   },
@@ -50,12 +72,7 @@ const ReModel = new mongoose.Schema({
   Linkendin: {
     type: String,
   },
-  AOE: {
-    type: String,
-  },
-  specilization: {
-    type: String,
-  },
+
   mentortype: {
     type: String,
   },

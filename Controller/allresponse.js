@@ -59,6 +59,68 @@ exports.getblog = async (req, res) => {
   });
 };
 
+exports.getmentors = async (req, res) => {
+  const mentor = await Recuirtment.find({
+    compeleted: true,
+  });
+  return res.status(201).json({
+    status: "success",
+    data: mentor,
+  });
+  // const { user_id } = req.body;
+
+  // const get = await RoomModel.findOne({
+  //   user: user_id,
+  //   status: "success",
+  // });
+
+  // if (get) {
+  //   if (get.course_index > 1) {
+  //     const request = await Recuirtment.findOne({
+  //       _id: get.recuiter,
+  //     });
+  //     let d = new Date();
+  //     let m = d.getMonth();
+  //     let date = d.getDate();
+  //     let array = [];
+
+  //     let f = request.busydate.filter(
+  //       (state) =>
+  //         state.date.split(" ")[1] >= m + 1 && state.date.split(" ")[0] >= date
+  //     );
+  //     dispatchdates(f, array);
+
+  //     res.status(200).json({
+  //       status: "success",
+  //       meeting: array,
+  //     });
+  //   } else {
+  //     const request = await Recuirtment.find();
+  //     let d = new Date();
+  //     let m = d.getMonth();
+  //     let date = d.getDate();
+  //     let array = [];
+  //     for (let i = 0; i < request.length; i++) {
+  //       let f = request[i].busydate.filter(
+  //         (state) =>
+  //           state.date.split(" ")[1] >= m + 1 &&
+  //           state.date.split(" ")[0] >= date
+  //       );
+
+  //       dispatchdates(f, array);
+  //     }
+  //     res.status(200).json({
+  //       status: "success",
+  //       meeting: array,
+  //     });
+  //   }
+  // } else {
+  //   res.status(400).json({
+  //     status: "failed",
+  //   });
+  // }
+};
+
 exports.allblogs = async (req, res) => {
   const blogs = await Blogs.find();
   res.status(200).json({
@@ -79,5 +141,3 @@ exports.product = async (req, res) => {
       console.log(err);
     });
 };
-
-
