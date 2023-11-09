@@ -55,7 +55,6 @@ exports.isloggedIn = async (req, res) => {
     if (currentUser) {
       const students = await User.find();
       const mentors = await Recuirtment.find();
-      const PendingFeedback =await Pednin
       res.status(201).json({
         status: "success",
         data: {
@@ -67,6 +66,7 @@ exports.isloggedIn = async (req, res) => {
       res.status(401).json({ message: "User not found" });
     }
   } catch (err) {
+    console.log(err);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
