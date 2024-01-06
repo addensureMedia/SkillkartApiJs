@@ -33,6 +33,7 @@ const RoomSchema = new mongoose.Schema({
   transcationid: {
     type: String,
   },
+  logs: [{ type: String }],
   recuiter: {
     type: String,
   },
@@ -42,6 +43,6 @@ const RoomSchema = new mongoose.Schema({
   },
 });
 
-const sessionModel = mongoose.model("room", RoomSchema);
+const sessionModel = mongoose.model("session", RoomSchema);
 
 module.exports = sessionModel;

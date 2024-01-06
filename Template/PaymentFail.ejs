@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Payment Failed - Skillkart</title>
+
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Rethink+Sans:wght@400;500;600&display=swap");
+      body {
+        font-family: "Rethink Sans", sans-serif;
+        margin: 20px;
+        color: #333;
+      }
+
+      h2 {
+        color: #e74c3c; /* Use a color that signifies failure */
+      }
+
+      p {
+        line-height: 1.6;
+      }
+
+      .signature {
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <table width="100%" cellpadding="0" cellspacing="0" border="0">
+      <tbody>
+        <tr>
+          <td width="100%">
+            <div style="max-width: 600px; margin: 0 auto; text-align: left">
+              <table
+                align="center"
+                cellpadding="0"
+                cellspacing="0"
+                style="
+                  border-spacing: 0;
+                  margin: 0 auto;
+                  padding: 10px;
+                  width: 100%;
+                  max-width: 600px;
+                "
+              >
+                <tbody>
+                  <tr>
+                    <td>
+                      <table
+                        style="
+                          width: 100%;
+                          border-bottom: 1px solid rgba(0, 0, 0, 0.46);
+                        "
+                      >
+                        <tbody>
+                          <tr
+                            style="
+                              display: flex;
+                              align-items: center;
+                              justify-content: space-between;
+                              padding: 20px 20px 20px 10px;
+                            "
+                          >
+                            <td style="width: 100%; display: flex">
+                              <img
+                                src="https://www.skillkart.app/static/media/Logotrans.24b4f8e5f5f08c6af4d7.png"
+                                alt="logo"
+                                width="120"
+                              />
+                            </td>
+                            <td>
+                              <a
+                                href="https://skillkart.app/login"
+                                style="color: black; font-size: 18px"
+                                >Login</a
+                              >
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </tbody>
+                <tbody style="margin: 10px 0px; color: black">
+                  <tr>
+                    <td>
+                      <table
+                        style="
+                          width: 100%;
+                          padding: 15px 15px;
+                          border-radius: 10px;
+                        "
+                      >
+                        <tbody>
+                          <tr style="display: flex; flex-direction: column">
+                            <td>
+                              <table style="width: 100%; height: 100%">
+                                <tbody>
+                                  <tr
+                                    style="text-align: left; padding: 10px 20px"
+                                  >
+                                    <td>
+                                      <h2
+                                        style="
+                                          text-align: left;
+                                          font-size: 17px;
+                                          margin: 0px;
+                                          font-weight: 600;
+                                          text-transform: capitalize;
+                                        "
+                                      >
+                                        Dear <%= username %>,
+                                      </h2>
+                                    </td>
+                                  </tr>
+                                  <tr style="padding: 0px 10px">
+                                    <td>
+                                      <p
+                                        style="
+                                          font-size: 17px;
+                                 
+                                        "
+                                      >
+                                        We're sorry to inform you that your payment for <%= productname %> has failed.
+                                      </p>
+                                      <p style="margin-top: 10px">
+                                        If you believe this is an error, please ensure that your payment details are correct and try again. If the issue persists, kindly contact us at
+                                        <span style="color: royalblue; text-decoration: underline;">info@skillkart.app<span>.
+                                      </p>
+
+                                      <p
+                                        style="
+                                          text-align: left;
+                                          margin-top: 10px;
+                                          font-size: 17px;
+                                          line-height: 25px;
+                                        "
+                                      >
+                                        We apologize for any inconvenience this may have caused and appreciate your understanding.
+                                      </p>
+                                    </td>
+                                  </tr>
+                                  <tr>
+                                    <td>
+                                      <p
+                                        style="
+                                          font-size: 17px;
+                                          margin: 10px 0px 0px 0px;
+                           
+                                        "
+                                      >
+                                        Best regards,
+                                      </p>
+                                      <p
+                                        style="
+                                          font-size: 15px;
+                                          font-weight: 600;
+                                          margin: 0px;
+                                        "
+                                      >
+                                        Skillkart Team
+                                      </p>
+                                    </td>
+                                  </tr>
+                                </tbody>
+                              </table>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

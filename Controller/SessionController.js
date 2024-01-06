@@ -1,7 +1,10 @@
+const Feedback = require("../Models/Feedback");
 const Mentor = require("../Models/MentorModel");
+const PendingFeedback = require("../Models/Pendingfeedback");
 const Roomai = require("../Models/Roomai");
 const sessionModel = require("../Models/SessionModel");
 const { _randomStringGenerator } = require("../services/AuthService");
+const Email = require("../services/EmailService");
 
 exports.slotManager = async (req, res) => {
   const { date, time, user_id, schdule } = req.body;
@@ -193,6 +196,10 @@ exports._sessionBooking = async (req, res, next) => {
       await alreadyHasBooking.save();
       const url = `https://skillkart.app/room/${alreadyHasBooking.roomid}`;
 
+      await new Email().slotConfirmForStudent(username, user_email, url, {
+        time: time,
+        date: date,
+      });
       // await new RoomEmail(url, username, user_email, time, date).send();
       // await new RoomEmail(
       //   url,
@@ -287,7 +294,10 @@ exports._sessionBooking = async (req, res, next) => {
     });
 
     const url = `https://skillkart.app/room/${string}`;
-
+    await new Email().slotConfirmForStudent(url, username, user_email, {
+      time: time,
+      date: date,
+    });
     // await new RoomEmail(url, username, user_email, time, date).send();
     // await new RoomEmail(url, recuiter_name, recuiter_email, time, date).send();
 
@@ -365,4 +375,112 @@ exports.updateUserDetail = async (req, res) => {
       status: "Failed",
     });
   }
+};
+
+exports._userResume = async (req, res, next) => {
+  const { userid, round, username, transid } = req.body;
+
+  const alreadyUploaded = await sessionModel.findOne({
+    round: round,
+    transcationid: transid,
+    user: userid,
+  });
+  console.log(alreadyUploaded);
+  if (alreadyUploaded) {
+    return res.status(200).json({
+      status: "success",
+    });
+  } else {
+    const mentor = await sessionModel.create({
+      user: userid,
+      compeleted: true,
+      user_name: username,
+      round: round,
+      transcationid: transid,
+      resume: `${userid}`,
+    });
+    res.status(200).json({
+      status: "success",
+    });
+  }
+};
+
+exports._requestForSlot = async (req, res) => {
+  const { mentorid } = req.body;
+  const mentor = await Mentor.findById(mentorid);
+  if (mentor) {
+    new Email().requestForSlot(mentor.Name, mentor.Email);
+    return res.status(200).json({
+      status: "success",
+    });
+  } else {
+    return res.status(400).json({
+      status: "failed",
+    });
+  }
+};
+
+exports._roomFeedback = async (req, res, next) => {
+  const {
+    EDB,
+    CS,
+    LISL,
+    INSI,
+    EAS,
+    LA,
+    EL,
+    EIO,
+    TM,
+    TK,
+    EONLNS,
+    SH,
+    CITA,
+    AC,
+    STLP,
+    TSI,
+    SU,
+    OHI,
+    tread,
+    userid,
+    roomid,
+  } = req.body;
+  const user = await Mentor.findById(userid);
+  user.pendingfeedback = false;
+  console.log(user);
+  const request = await Feedback.create({
+    EDB,
+    CS,
+    LISL,
+    INSI,
+    EAS,
+    LA,
+    EL,
+    EIO,
+    TM,
+    TK,
+    EONLNS,
+    SH,
+    CITA,
+    AC,
+    STLP,
+    TSI,
+    SU,
+    OHI,
+    tread,
+    userid,
+    roomid,
+  });
+  await user.save();
+  const crequest = await sessionModel.findOne({
+    roomid: roomid,
+  });
+
+  if (crequest) {
+    const pfe = await PendingFeedback.findOneAndDelete({ roomid });
+    request.compeleted = true;
+    await crequest.save();
+  }
+  res.status(200).json({
+    status: "success",
+  });
 };

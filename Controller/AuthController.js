@@ -7,7 +7,8 @@ const {
   _handleOnboardingStudent,
   _handleOnboardingMentor,
 } = require("../services/AuthService");
-const { createtoken } = require("../services/TokenCreation");
+const Email = require("../services/EmailService");
+const { createtoken, jsontoken } = require("../services/TokenCreation");
 const bcrypt = require("bcrypt");
 
 exports.isLoggedin = async (req, res, next) => {
@@ -62,9 +63,9 @@ exports.isLoggedin = async (req, res, next) => {
   if (mentor) {
     const [userSession, sessionFeedback] = await Promise.all([
       sessionModel.find({
-        recuiter: Mentor._id,
+        recuiter: mentor._id,
       }),
-      Feedback.find({ userid: Mentor._id }),
+      Feedback.find({ userid: mentor._id }),
     ]);
     return res.status(200).json({
       status: "success",
@@ -147,20 +148,29 @@ exports.signup = async (req, res) => {
       message: "Already had an account as a Recuiter.",
     });
   } else {
-    if (!isUser) {
-      const ecrpytedPassword = await bcrypt.hash(password, 15);
-      const newUser = await User.create({
-        Name: username,
-        Email: email,
-        password: ecrpytedPassword,
-        phone: phone,
-        completed: false,
+    console.log(isUser);
+    if (isUser) {
+      return res.status(401).json({
+        status: "Failed",
+        message: "Already had an account. Try to login.",
       });
-      return createtoken(newUser, 201, res, req);
     }
-    return res.status(401).json({
-      status: "Failed",
-      message: "Already had an account. Try to login.",
+    const ecrpytedPassword = await bcrypt.hash(password, 15);
+    const newUser = await User.create({
+      Name: username,
+      Email: email,
+      password: ecrpytedPassword,
+      phone: phone,
+      completed: false,
+    });
+    let token = await jsontoken(newUser._id);
+    new Email().welcomeUser(username, email);
+    return res.status(201).json({
+      status: "success",
+      token,
+      data: {
+        newUser,
+      },
     });
   }
 };
@@ -222,7 +232,7 @@ exports.OnboardingTokenVerification = async (req, res, next) => {
     } else {
       return res.status(200).json({
         status: "success",
-        data: user,
+        data: { user },
       });
     }
   }
@@ -251,6 +261,7 @@ exports.EmailVerification = async (req, res) => {
       Mentor.findOne({ Email: emailId.toLowerCase() }),
       User.findOne({ Email: emailId.toLowerCase() }),
     ]);
+    console.log(hasRecruiterAccount, hasUserAccount);
 
     if (hasRecruiterAccount) {
       return res.status(401).json({ status: "Failed" });
@@ -292,8 +303,19 @@ exports.BecomeaMentor = async (req, res) => {
       Password: hashedPassword,
       phone: phone,
     });
-
-    createtoken(mentor, 201, res, req);
+    new Email().welcomementor(name, email);
+    let token = await jsontoken(mentor._id);
+    let url = `https://skillkart.app/Account/mentor/onboarding/?Authorize_token=${token}`;
+    setTimeout(() => {
+      new Email().onBoardingMentor(name, email, url);
+    }, 3000);
+    return res.status(201).json({
+      status: "success",
+      token,
+      data: {
+        mentor,
+      },
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({

@@ -1,6 +1,7 @@
 const Referal = require("../Models/ReferalModel");
 const Razorpay = require("razorpay");
 const Transcation = require("../Models/Transcation");
+const Email = require("../services/EmailService");
 
 exports.Payment = async (req, res, next) => {
   const { amount, email } = req.body;
@@ -78,6 +79,11 @@ exports.SuccessTranscation = async (req, res) => {
     referedEmail: email,
     used: false,
   });
+  if (status == "success") {
+    new Email().PaymentSucessfull(username, email, course, price);
+  } else {
+    new Email().PaymentFailure(username, email, course, price);
+  }
   if (referer) {
     referer.used = true;
     await referer.save();
